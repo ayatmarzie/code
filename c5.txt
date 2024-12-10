@@ -1,1 +1,57 @@
 151
+from deep_translator import GoogleTranslator, exceptions
+import os
+import json  # For saving the dictionary
+
+def translate_file_to_dict(input_file, output_file, checkpoint_file, dictionary_file, src_lang='en', dest_lang='fa'):
+    # Check if the checkpoint file exists and read the last translated line number
+    if os.path.exists(checkpoint_file):
+        with open(checkpoint_file, 'r', encoding='utf-8') as cp_file:
+            last_translated_line = int(cp_file.read().strip())
+    else:
+        last_translated_line = 0  # Start from the beginning if no checkpoint file
+
+    # Initialize the dictionary to store translations
+    translations = {}
+
+    # If dictionary file exists, load it
+    if os.path.exists(dictionary_file):
+        with open(dictionary_file, 'r', encoding='utf-8') as dict_file:
+            translations = json.load(dict_file)
+
+    with open(input_file, 'r', encoding='utf-8') as infile, open(output_file, 'a', encoding='utf-8') as outfile:
+        for i, line in enumerate(infile):
+            if i < last_translated_line:  # Skip already translated lines
+                continue
+
+            original_word = line.strip()
+            if original_word:  # Only translate non-empty lines
+                try:
+                    translated_word = GoogleTranslator(source=src_lang, target=dest_lang).translate(original_word)
+                    outfile.write(translated_word + '\n')  # Write translation to the output file
+                    translations[original_word] = translated_word  # Add to dictionary
+                    print(f"Translated line {i}: {original_word} -> {translated_word}")
+                except exceptions.TranslationNotFound:
+                    print(f"Translation not found for line {i}: {original_word}")
+                    translations[original_word] = None  # Mark as untranslated
+                except Exception as e:
+                    print(f"An error occurred for line {i}: {e}")
+                    translations[original_word] = None  # Mark as untranslated
+                    break  # Exit on error
+
+                # Update the checkpoint file with the last translated line number
+                with open(checkpoint_file, 'w', encoding='utf-8') as cp_file:
+                    cp_file.write(str(i + 1))  # Save the next line to translate
+
+    # Save the dictionary to a file
+    with open(dictionary_file, 'w', encoding='utf-8') as dict_file:
+        json.dump(translations, dict_file, ensure_ascii=False, indent=4)
+
+# File paths
+input_file = 'tgt-train.txt'  # Input file with one word per line
+output_file = 'tgt-train.fa.txt'  # File to save translations line by line
+checkpoint_file = 'checkpoint.txt'  # File to save the last translated line number
+dictionary_file = 'translations.json'  # File to save the dictionary
+
+# Call the translation function
+translate_file_to_dict(input_file, output_file, checkpoint_file, dictionary_file)
