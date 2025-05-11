@@ -2,8 +2,10 @@ import json
 from deep_translator import GoogleTranslator
 
 # Load dataset
-with open("your_dataset.json", "r", encoding="utf-8") as f:
-    dataset = json.load(f)
+dataset=[]
+with open('your_file.json', 'r', encoding='utf-8') as f:
+    for line in f:
+        dataset.append(json.loads(line)) 
 
 # Initialize translator
 translator = GoogleTranslator(source='auto', target='fa')
